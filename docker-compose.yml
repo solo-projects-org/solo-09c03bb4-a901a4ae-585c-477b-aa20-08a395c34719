@@ -1,0 +1,23 @@
+services:
+  settlement-analyzer:
+    build: .
+    image: settlement-view-analyzer:1.0.0
+    container_name: settlement-view-analyzer
+    ports:
+      - "${APP_PORT:-8000}:8000"
+    environment:
+      SETTLEMENT_DB: /data/settlement.db
+      # 可选：容器首次启动且数据库为空时自动导入种子目录
+      SEED_CATALOG: /app/samples/catalog.json
+      PORT: "8000"
+    volumes:
+      - settlement-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+volumes:
+  settlement-data:

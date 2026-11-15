@@ -1,0 +1,77 @@
+{
+  "name": "结算分析目录（示例）",
+  "base_tables": {
+    "orders": [
+      "order_id",
+      "customer_id",
+      "currency",
+      "status",
+      "amount",
+      "discount_amount",
+      "created_at",
+      "region_code"
+    ],
+    "payments": [
+      "payment_id",
+      "order_id",
+      "paid_amount",
+      "paid_at",
+      "channel",
+      "refund_amount"
+    ],
+    "customers": [
+      "customer_id",
+      "customer_name",
+      "tier",
+      "region",
+      "registered_at"
+    ],
+    "fx_rates": [
+      "currency",
+      "rate_date",
+      "rate"
+    ]
+  },
+  "views": [
+    {
+      "name": "vw_paid_orders",
+      "sql": "SELECT o.order_id AS order_id, o.customer_id AS customer_id, o.amount AS amount, o.discount_amount AS discount_amount, o.currency AS currency, o.created_at AS created_at FROM orders o JOIN payments p ON o.order_id = p.order_id WHERE o.status = 'paid'"
+    },
+    {
+      "name": "vw_order_payments",
+      "sql": "SELECT p.order_id AS order_id, SUM(p.paid_amount) AS paid_total, SUM(p.refund_amount) AS refund_total, COUNT(*) AS payment_count FROM payments p GROUP BY p.order_id HAVING SUM(p.paid_amount) > 0"
+    },
+    {
+      "name": "vw_order_net",
+      "sql": "SELECT o.order_id AS order_id, o.customer_id AS customer_id, o.currency AS currency, o.amount - o.discount_amount AS net_amount, o.created_at AS created_at FROM orders o"
+    },
+    {
+      "name": "vw_settlement",
+      "sql": "SELECT n.order_id AS order_id, n.customer_id AS customer_id, n.currency AS currency, n.net_amount - COALESCE(p.paid_total, 0) AS open_amount, COALESCE(p.refund_total, 0) AS refund_amount, n.created_at AS created_at FROM vw_order_net n LEFT JOIN vw_order_payments p ON n.order_id = p.order_id"
+    },
+    {
+      "name": "vw_settlement_by_customer",
+      "sql": "SELECT s.customer_id AS customer_id, SUM(s.open_amount) AS total_open_amount, COUNT(*) AS order_count FROM vw_settlement s WHERE s.open_amount <> 0 GROUP BY s.customer_id"
+    },
+    {
+      "name": "vw_settlement_by_region",
+      "sql": "SELECT c.region AS region, SUM(s.open_amount) AS total_open_amount, COUNT(DISTINCT s.order_id) AS order_count FROM vw_settlement s JOIN customers c ON s.customer_id = c.customer_id GROUP BY c.region"
+    },
+    {
+      "name": "vw_settlement_fx",
+      "sql": "SELECT s.order_id AS order_id, f.rate AS fx_rate, s.open_amount * f.rate AS open_amount_cny FROM vw_settlement s JOIN fx_rates f ON s.currency = f.currency"
+    },
+    {
+      "name": "vw_paid_settlement",
+      "sql": "SELECT po.order_id AS order_id, po.amount AS amount, p.paid_total AS paid_total, po.amount - p.paid_total AS open_amount FROM vw_paid_orders po JOIN vw_order_payments p ON po.order_id = p.order_id"
+    },
+    {
+      "name": "vw_customer_tier_summary",
+      "sql": "SELECT c.tier AS tier, COUNT(*) AS customer_count, SUM(b.total_open_amount) AS total_open_amount FROM customers c JOIN vw_settlement_by_customer b ON c.customer_id = b.customer_id GROUP BY c.tier"
+    },
+    {
+      "name": "vw_refund_watch",
+      "sql": "SELECT p.order_id AS order_id, p.refund_total AS refund_total, CASE WHEN p.refund_total > 1000 THEN 'high' ELSE 'normal' END AS refund_level FROM vw_order_payments p"
+    }
+  ]
+}

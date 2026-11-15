@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>结算视图影响分析</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">◎</span>
+      <div>
+        <h1>结算视图影响分析</h1>
+        <p class="subtitle">停用上游字段前，先找到会失效的视图与输出列</p>
+      </div>
+    </div>
+    <div class="version-badge" id="active-version" title="当前生效目录版本">
+      <span class="dot" id="version-dot"></span>
+      <span id="active-version-text">尚未导入目录</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel import-panel">
+      <div class="panel-head">
+        <h2>1 · 导入目录</h2>
+        <span class="hint">整份替换当前目录，校验失败则保留原版</span>
+      </div>
+
+      <label class="dropzone" id="dropzone" for="file-input">
+        <input type="file" id="file-input" accept=".json,application/json" hidden />
+        <span class="drop-icon" aria-hidden="true">⇪</span>
+        <span class="drop-title">选择或拖入 JSON 目录文件</span>
+        <span class="drop-meta" id="file-meta">base_tables + views（视图 SELECT 定义）</span>
+      </label>
+
+      <div class="import-actions">
+        <button class="btn primary" id="import-btn" disabled>导入并替换目录</button>
+        <button class="btn ghost" id="load-sample-btn" type="button">载入示例</button>
+      </div>
+
+      <div class="alert" id="import-alert" hidden></div>
+
+      <div class="versions">
+        <div class="section-title">版本历史</div>
+        <ol class="version-list" id="version-list">
+          <li class="empty">暂无版本</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="panel analyze-panel">
+      <div class="panel-head">
+        <h2>2 · 选择待停用字段</h2>
+        <span class="hint">字段用于 JOIN / WHERE / GROUP BY / HAVING / ORDER BY 时，影响扩散到整个视图及其下游</span>
+      </div>
+
+      <div class="field-picker" id="field-picker">
+        <p class="empty">导入目录后，此处列出基础表与字段。</p>
+      </div>
+
+      <div class="analysis-status" id="analysis-status"></div>
+      <div id="analysis-result"></div>
+    </section>
+  </main>
+
+  <section class="catalog-strip">
+    <div class="catalog-strip-inner">
+      <h2>当前目录概览</h2>
+      <div id="catalog-overview" class="catalog-overview">
+        <p class="empty">尚未导入目录。可点击「载入示例」快速体验。</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <span>FastAPI · SQLite · sqlglot</span>
+    <span id="footer-version"></span>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
